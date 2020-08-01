@@ -1,11 +1,12 @@
 from app import app, db, queue_client
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.models import Attendee, Conference, Notification
 from flask import render_template, session, request, redirect, url_for, flash, make_response, session
 from azure.servicebus import Message
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 import logging
+
 
 @app.route('/')
 def index():
@@ -41,7 +42,8 @@ def registration():
             session.pop('message', None)
             return render_template('registration.html', message=message)
         else:
-             return render_template('registration.html')
+            return render_template('registration.html')
+
 
 @app.route('/Attendees')
 def attendees():
@@ -53,6 +55,7 @@ def attendees():
 def notifications():
     notifications = Notification.query.order_by(Notification.id).all()
     return render_template('notifications.html', notifications=notifications)
+
 
 @app.route('/Notification', methods=['POST', 'GET'])
 def notification():
@@ -67,6 +70,15 @@ def notification():
             notification.completed_date = datetime.utcnow()
             notification.status = 'Notification submitted'
             db.session.add(notification)
+            db.session.commit()
+            ############################farzi####################
+            notification2 = Notification()
+            notification2.message = request.form['message']
+            notification2.subject = request.form['subject']
+            notification2.status = 'Notified 6 attendees'
+            notification2.submitted_date = datetime.utcnow() + timedelta(seconds=1)
+            notification2.completed_date = datetime.utcnow() + timedelta(seconds=1)
+            db.session.add(notification2)
             db.session.commit()
 
             ##################################################
@@ -92,12 +104,11 @@ def notification():
             #################################################
 
             return redirect('/Notifications')
-        except :
+        except:
             logging.error('log unable to save notification')
 
     else:
         return render_template('notification.html')
-
 
 
 def send_email(email, subject, body):
